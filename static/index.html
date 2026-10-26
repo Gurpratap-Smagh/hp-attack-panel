@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>hp-attack-panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-zinc-950 text-zinc-100 min-h-screen">
+    <main class="mx-auto max-w-4xl p-6 md:p-10">
+      <h1 class="text-3xl font-bold mb-8">hp-attack-panel</h1>
+
+      <button
+        id="randomButton"
+        class="w-full md:w-80 h-24 text-3xl font-semibold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 transition"
+      >
+        Random
+      </button>
+
+      <section class="mt-8">
+        <h2 class="text-lg font-semibold mb-2">Live Request Log</h2>
+        <pre id="logPane" class="bg-zinc-900 border border-zinc-800 rounded-lg p-4 h-96 overflow-y-auto text-sm"></pre>
+      </section>
+    </main>
+
+    <script>
+      const logPane = document.getElementById("logPane");
+      const randomButton = document.getElementById("randomButton");
+
+      const appendLog = (message) => {
+        logPane.textContent += `${message}\n`;
+        logPane.scrollTop = logPane.scrollHeight;
+      };
+
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+
+      ws.onopen = () => {
+        appendLog("[ws] connected");
+        setInterval(() => ws.readyState === WebSocket.OPEN && ws.send("ping"), 15000);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          appendLog(JSON.stringify(data, null, 2));
+        } catch {
+          appendLog(event.data);
+        }
+      };
+
+      ws.onclose = () => appendLog("[ws] disconnected");
+
+      randomButton.addEventListener("click", async () => {
+        try {
+          const res = await fetch("/fire-random", { method: "POST" });
+          const data = await res.json();
+          appendLog(`[http] fired payload ${data.payload_id} (${data.status_code})`);
+        } catch (err) {
+          appendLog(`[error] ${err}`);
+        }
+      });
+    </script>
+  </body>
+</html>
